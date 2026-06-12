@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4Gamers 業務開發百科全書</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===================================================
+           CSS 變數 — 色彩系統（依照需求文件第四章）
+           =================================================== */
+        :root {
+            --primary:      #0D2137;  /* 深藍：頁頭、主強調色 */
+            --navy:         #1A3A5C;  /* 海軍藍：Tab 選中、開場白卡片 */
+            --sales-bg:     #EBF3FB;  /* 淺藍：業務接球話術背景 */
+            --client-bg:    #FDF6EE;  /* 淺橘：客戶說的話背景 */
+            --memo-bg:      #F5F5F5;  /* 淺灰：業務備忘背景 */
+            --confirm:      #0F6E56;  /* 深綠：接球關鍵標籤文字 */
+            --border:       #CCCCCC;  /* 所有卡片邊框 */
+            --page-bg:      #F9FAFB;  /* 頁面背景 */
+            --white:        #FFFFFF;
+            --text-blue:    #0C447C;  /* 業務開場白、接球話術文字色 */
+            --text-dark:    #222222;  /* 異議按鈕文字 */
+            --text-memo:    #5F5E5A;  /* 備忘文字（深灰） */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Noto Sans TC', Arial, sans-serif;
+            background: var(--page-bg);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* ===================================================
+           頂部導覽列
+           =================================================== */
+        .navbar {
+            background: var(--primary);
+            color: white;
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            gap: 16px;
+        }
+
+        .navbar-brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+        .navbar-logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.3px;
+        }
+
+        .navbar-subtitle {
+            font-size: 11px;
+            color: rgba(255,255,255,0.55);
+            margin-top: 2px;
+        }
+
+        /* 產業切換下拉選單 */
+        .industry-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .industry-selector label {
+            color: rgba(255,255,255,0.75);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .industry-select {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 7px 14px 7px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.2s;
+            min-width: 180px;
+        }
+
+        .industry-select:hover { background: rgba(255,255,255,0.22); }
+        .industry-select option { background: var(--primary); color: white; }
+
+        /* 搜尋欄：Phase 2 預留位置 */
+        .search-placeholder { display: flex; align-items: center; gap: 6px; }
+
+        .search-input {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.35);
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            width: 190px;
+            cursor: not-allowed;
+        }
+
+        .search-badge {
+            background: rgba(255,180,0,0.25);
+            color: rgba(255,210,100,0.9);
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            white-space: nowrap;
+            border: 1px solid rgba(255,180,0,0.3);
+        }
+
+        /* ===================================================
+           主要內容容器
+           =================================================== */
+        .main-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+        }
+
+        /* ===================================================
+           載入動畫
+           =================================================== */
+        .loading-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 20px;
+            gap: 18px;
+        }
+
+        .spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid var(--border);
+            border-top-color: var(--navy);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text { color: var(--text-memo); font-size: 14px; }
+
+        /* ===================================================
+           錯誤提示
+           =================================================== */
+        .error-box {
+            background: #FFF5F5;
+            border: 1.5px solid #FFCCCC;
+            border-radius: 10px;
+            padding: 28px 24px;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .error-box h3 { color: #C00; margin-bottom: 10px; font-size: 16px; }
+        .error-box p { color: #555; font-size: 13px; line-height: 1.6; }
+
+        .error-box button {
+            margin-top: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 9px 22px;
+            border-radius: 7px;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+
+        .error-box button:hover { background: var(--navy); }
+
+        /* 未設定 Google Sheets 提示 */
+        .config-notice {
+            background: #FFFBEA;
+            border: 1.5px solid #FFE082;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: #7A6000;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .config-notice-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+        /* ===================================================
+           業務開場白卡片
+           =================================================== */
+        .opener-card {
+            background: var(--navy);
+            border-radius: 12px;
+            padding: 22px 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 12px rgba(13,33,55,0.15);
+        }
+
+        .opener-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .stage-badge {
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.85);
+            font-size: 11px;
+            padding: 3px 11px;
+            border-radius: 20px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .opener-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .opener-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .opener-text {
+            font-size: 15px;
+            line-height: 1.75;
+            color: rgba(255,255,255,0.92);
+        }
+
+        /* ===================================================
+           對話階段 Tab 列
+           =================================================== */
+        .stage-tabs-wrapper { margin-bottom: 20px; }
+
+        .stage-tabs-label {
+            font-size: 11px;
+            color: var(--text-memo);
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stage-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .stage-tab {
+            padding: 8px 16px;
+            border-radius: 7px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            color: var(--text-memo);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            line-height: 1;
+        }
+
+        .stage-tab:hover { border-color: var(--navy); color: var(--navy); }
+
+        .stage-tab.active {
+            background: var(--navy);
+            color: white;
+            border-color: var(--navy);
+            font-weight: 500;
+        }
+
+        /* ===================================================
+           客戶異議按鈕區
+           =================================================== */
+        .objection-section {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 20px 20px;
+            margin-bottom: 20px;
+        }
+
+        .objection-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 3px;
+        }
+
+        .objection-section-subtitle {
+            font-size: 12px;
+            color: var(--text-memo);
+            margin-bottom: 16px;
+        }
+
+        .objection-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .objection-btn {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 13px 14px;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-height: 72px;
+        }
+
+        .objection-btn:hover {
+            border-color: var(--navy);
+            background: #F5F8FF;
+        }
+
+        .objection-btn.selected {
+            border-color: var(--navy);
+            border-width: 2px;
+            background: var(--sales-bg);
+        }
+
+        .objection-tag {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--confirm);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .objection-preview {
+            font-size: 13px;
+            color: var(--text-dark);
+            line-height: 1.45;
+        }
+
+        /* ===================================================
+           話術展示區（點擊異議後顯示）
+           =================================================== */
+        .response-area {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .response-area.visible { display: flex; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 對話泡泡共用 */
+        .dialogue-bubble {
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        .bubble-header {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin-bottom: 10px;
+        }
+
+        .bubble-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .bubble-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .bubble-content { font-size: 14px; line-height: 1.75; }
+
+        /* 客戶說的話（橘色） */
+        .client-bubble {
+            background: var(--client-bg);
+            border: 1px solid #F0D8BE;
+        }
+
+        .client-bubble .bubble-icon { background: #F5C8A0; color: #7A4A1A; }
+        .client-bubble .bubble-label { color: #8B4A1A; }
+        .client-bubble .bubble-content { color: #5C3A1A; }
+
+        /* 業務接球話術（藍色） */
+        .sales-bubble {
+            background: var(--sales-bg);
+            border: 1px solid #B8D4EE;
+        }
+
+        .sales-bubble .bubble-icon { background: #A8C8F0; color: var(--text-blue); }
+        .sales-bubble .bubble-label { color: var(--text-blue); }
+        .sales-bubble .bubble-content { color: var(--text-blue); }
+
+        /* 業務備忘（灰色） */
+        .memo-block {
+            background: var(--memo-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+
+        .memo-header {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 8px;
+        }
+
+        .memo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--confirm);
+            flex-shrink: 0;
+        }
+
+        .memo-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--confirm);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .memo-content {
+            font-size: 12px;
+            color: var(--text-memo);
+            line-height: 1.65;
+        }
+
+        .source-tag {
+            font-size: 10px;
+            color: #AAA;
+            margin-top: 8px;
+            font-style: italic;
+            display: none;
+        }
+
+        /* ===================================================
+           底部導航列
+           =================================================== */
+        .nav-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 4px;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text-dark);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .nav-btn:hover:not(:disabled) { border-color: var(--navy); color: var(--navy); }
+
+        .nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .nav-btn.primary {
+            background: var(--navy);
+            color: white;
+            border-color: var(--navy);
+        }
+
+        .nav-btn.primary:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); }
+
+        .progress-indicator { font-size: 13px; color: var(--text-memo); text-align: center; flex: 1; }
+
+        /* ===================================================
+           RWD：平板（768px）與手機（480px）
+           =================================================== */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-wrap: wrap;
+                height: auto;
+                padding: 12px 16px;
+                gap: 10px;
+            }
+
+            .search-placeholder { display: none; }
+
+            .objection-grid { grid-template-columns: 1fr; }
+
+            .stage-tabs {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .main-container { padding: 16px 14px 40px; }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-subtitle { display: none; }
+
+            .nav-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav-btn { justify-content: center; }
+
+            .progress-indicator { order: -1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===================================================
+     頂部導覽列
+     =================================================== -->
+<nav class="navbar">
+    <div class="navbar-brand">
+        <div>
+            <div class="navbar-logo">4Gamers 業務訓練工具</div>
+            <div class="navbar-subtitle">業務開發百科全書 · Sales Training Hub</div>
+        </div>
+    </div>
+
+    <!-- 產業切換下拉選單（功能 B） -->
+    <div class="industry-selector">
+        <label for="industrySelect">產業類型：</label>
+        <select id="industrySelect" class="industry-select" onchange="onIndustryChange(this.value)">
+            <option value="">載入中...</option>
+        </select>
+    </div>
+
+    <!-- 搜尋欄：Phase 2 預留位置（功能 D） -->
+    <div class="search-placeholder">
+        <input type="text" class="search-input" placeholder="搜尋話術關鍵字…" disabled
+               title="搜尋功能將於 Phase 2 開放">
+        <span class="search-badge">Phase 2</span>
+    </div>
+</nav>
+
+<!-- ===================================================
+     主要內容區
+     =================================================== -->
+<div class="main-container">
+    <div id="appContent">
+        <!-- 啟動時先顯示載入動畫，JS 初始化後替換 -->
+        <div class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">正在載入話術內容...</div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+/* ============================================================
+   CONFIG 區塊
+   業務主管：請在這裡填入您的 Google Sheets 設定
+   ============================================================ */
+const CONFIG = {
+    /*
+     * 步驟 1：將下方字串替換成您的 Google Sheets ID
+     * 取得方式：在 Google Sheets 網址列找到 /d/[這一段]/edit，整段複製
+     */
+    SHEET_ID: '1RVRN81jCJvGik1Wdi48I3sDPVE91IgWWmvh2UOqnOws',
+
+    /*
+     * 步驟 2：將下方字串替換成您的 Google Sheets API Key
+     * 取得方式：Google Cloud Console → API 與服務 → 憑證 → 建立 API 金鑰
+     * 安全提醒：API Key 請在 Cloud Console 設定 HTTP referrer 限制，只允許您的 GitHub Pages 網域
+     */
+    API_KEY: 'AIzaSyD8uW-nKrwcqQ3Ma4BtKT4hwSOLjgPGiZg',
+
+    /* Sheet 頁籤名稱（與 Google Sheets 的 Sheet 名稱對應，通常不需要修改） */
+    SHEETS: {
+        industries: 'industries',
+        stages:     'stages',
+        dialogues:  'dialogues',
+    },
+
+    /* 資料快取時間（分鐘）：避免每次開頁都呼叫 API，設 0 表示不快取 */
+    CACHE_MINUTES: 5,
+};
+
+
+/* ============================================================
+   預設初始資料
+   當 Google Sheets 尚未設定時使用此資料，讓工具可以立即打開使用。
+   Google Sheets 設定完成後，這份資料會被雲端資料自動取代。
+   ============================================================ */
+const FALLBACK_DATA = {
+
+    /* ----- 產業設定（對應 industries Sheet） ----- */
+    industries: [
+        {
+            industry_id:      'lifestyle_fmcg',
+            industry_name_zh: 'Lifestyle 品牌（FMCG）',
+            industry_name_en: 'Lifestyle & FMCG',
+            is_active:        'TRUE',
+            sort_order:       '1',
+        },
+        {
+            industry_id:      'game_publisher',
+            industry_name_zh: '遊戲發行商',
+            industry_name_en: 'Game Publisher',
+            is_active:        'FALSE',
+            sort_order:       '2',
+        },
+        {
+            industry_id:      'hardware_brand',
+            industry_name_zh: '硬體 / 3C 品牌',
+            industry_name_en: 'Hardware & 3C',
+            is_active:        'FALSE',
+            sort_order:       '3',
+        },
+    ],
+
+    /* ----- 對話階段（對應 stages Sheet） ----- */
+    stages: [
+        {
+            stage_id:    '1',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '開場定位',
+            opener_text: '我知道您可能覺得 4Gamers 是遊戲網站，跟您的品牌關係不大。但我今天想跟您討論的不是遊戲，而是您的品牌從來沒有有效觸及到的一群人——他們不看電視廣告、不點橫幅，但每天花 2–4 小時在特定數位情境裡，而我們剛好就在那個情境裡。',
+            sort_order:  '1',
+            is_active:   'TRUE',
+        },
+        {
+            stage_id:    '2',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '受眾畫像',
+            opener_text: '他們是 18–35 歲男性，有工作有收入。下班後的娛樂選擇和您的廣告投放習慣不重疊。他們可能每週喝掉四罐能量飲料、每月外送三到五次——但在刷影音 App 時習慣性略過廣告。我們能觸及他們的，是防禦心最低的那個瞬間：靠在椅背上、剛結束一局、需要補充一點什麼的時候。',
+            sort_order:  '2',
+            is_active:   'TRUE',
+        },
+        {
+            stage_id:    '3',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '數據說明',
+            opener_text: '我們有 25 萬會員、MAU 450 萬，男女比 7:3，18–39 歲佔 60%。我直接跟您說：我們的受眾標籤沒有 Meta 那麼細，我們不賣精準再行銷。但我們賣的是 Meta 賣不了的——那個情境。玩家在凌晨一點結束一局時跳出的廣告，和他在捷運上刷到的廣告，被接收的方式完全不一樣。',
+            sort_order:  '3',
+            is_active:   'TRUE',
+        },
+        {
+            stage_id:    '4',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '成效與 ROI',
+            opener_text: '我給您兩個角度：第一，曝光數 + 文章停留時間的標準報告。第二，任務型合作——玩家完成指定動作可兌換您的產品體驗券，可以直接追蹤兌換數量，等於是一個對這個族群的試用成本，每一個兌換都是真實行動過的人。',
+            sort_order:  '4',
+            is_active:   'TRUE',
+        },
+        {
+            stage_id:    '5',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '預算異議',
+            opener_text: '這筆預算放在大平台，觸及的是您本來已觸及的受眾，只是多買一次曝光。放在我們這裡，您在開發從未系統性覆蓋過的族群。這不是媒體採購的比較，這是受眾多樣化的投資。可以從一個季度的小型測試開始，拿到這個族群對您品牌的真實數據。',
+            sort_order:  '5',
+            is_active:   'TRUE',
+        },
+        {
+            stage_id:    '6',
+            industry_id: 'lifestyle_fmcg',
+            stage_label: '關單',
+            opener_text: '入門款：觀戰情境體驗套裝——兩篇情境廣編、一週首頁 Banner、一個玩家任務兌換機制。讓您的品牌在玩家最有補給需求的瞬間出現，同時拿到真實的任務兌換數作為 KPI 起點。要不要我這週把提案整理給您？',
+            sort_order:  '6',
+            is_active:   'TRUE',
+        },
+    ],
+
+    /* ----- 話術主表（對應 dialogues Sheet）：6 個階段 × 4 組異議 = 24 列 ----- */
+    dialogues: [
+
+        /* == 階段 1：開場定位 == */
+        {
+            dialogue_id:    '1',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '1',
+            objection_tag:  '受眾懷疑',
+            client_says:    '「遊戲用戶真的跟我的品牌有關係嗎？感覺差很多。」',
+            sales_response: '對，他們就是一般人——下班後玩遊戲，但同時也在喝飲料、叫外送、買保養品。遊戲是他們的娛樂方式，不是他們的身分標籤。真正的問題是：這群人每天在線 2–4 小時，您目前的廣告投放有沒有辦法有效觸及他們？我們做的，就是在他們最放鬆的時候讓您的品牌出現。',
+            sales_tip:      '接球關鍵：永遠從「生活習慣」切入，不要從「遊戲」切入。讓客戶理解受眾是「普通人」，只是有特定娛樂習慣。避免說「玩家喜歡你的產品」，改說「這群人本來就是你的潛在客戶，只是你以前沒機會觸及他們」。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '2',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '1',
+            objection_tag:  '品牌調性疑慮',
+            client_says:    '「我們的品牌調性偏高端精緻，不太想跟遊戲這個標籤連結。」',
+            sales_response: '完全理解。我想分享一個角度：我們的廣告不是「冠名某個遊戲」，而是「出現在高專注度的數位情境」。我們有情境廣編、開箱測評、生活風格內容——品牌呈現的方式完全由您決定，我們的受眾只是閱讀者，不會讓您的品牌貼上遊戲標籤。頂尖運動品牌、精品咖啡都有做過這類合作。',
+            sales_tip:      '接球關鍵：把「遊戲媒體」重新定義為「高黏著度數位內容平台」。強調內容呈現方式可以完全去遊戲化，聚焦在受眾的生活面而非遊戲面。如果有相關品牌案例，此時提出最有說服力。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '3',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '1',
+            objection_tag:  '已有固定媒體',
+            client_says:    '「我們已經有固定合作的媒體夥伴了，預算很難再新增。」',
+            sales_response: '我不是要您把預算從現有合作抽走——我更想問的是：您現有的媒體組合，有沒有系統性地覆蓋到 18–35 歲男性這個族群？如果沒有，這就是一個缺口。我們可以從一個小的測試包切入，不影響現有媒體計畫，先拿到這個族群的真實數據，再決定是否擴大。',
+            sales_tip:      '接球關鍵：不競爭，找缺口。讓客戶意識到「受眾多樣化」而非「媒體替換」。把切入點定位成「補充」而非「搶預算」，降低決策壓力。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '4',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '1',
+            objection_tag:  '時機未成熟',
+            client_says:    '「我們今年計畫都跑完了，明年再說吧。」',
+            sales_response: '沒問題，我也不希望在不對的時機打擾您。可以問一下，您通常什麼時候開始規劃下一年的媒體計畫？我想在那個時間點前跟您約一次正式的簡報，把這個族群的完整數據跟您分享。現在先讓我留下資料，等您做年度規劃時可以參考。',
+            sales_tip:      '接球關鍵：不強推，但要鎖定下一個節點。問出下次規劃時間點並排入跟進行程，空手回去是最糟的結果。在 CRM 設定提醒是必做的動作。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+
+        /* == 階段 2：受眾畫像 == */
+        {
+            dialogue_id:    '5',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '2',
+            objection_tag:  '性別偏差疑慮',
+            client_says:    '「你們用戶男性為主，但我們品牌受眾以女性居多，不太對口。」',
+            sales_response: '這個問題問得很好。有兩個角度：第一，我們的女性用戶雖然佔比較低（約 30%），但這群女性玩家是高消費力、高忠誠度的受眾，很難在其他平台精準鎖定。第二，如果您的品牌想開拓男性市場，這裡是個很乾淨的男性受眾池。哪個方向更符合您現在的需求？',
+            sales_tip:      '接球關鍵：二選一策略。讓客戶在「女性玩家高質感」和「男性受眾開拓」之間選擇，而不是被動接受拒絕。如果品牌真的完全女性導向且無意開拓男性，誠實說明，留下好感，讓客戶轉介紹。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '6',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '2',
+            objection_tag:  '消費力質疑',
+            client_says:    '「玩遊戲的人有消費能力嗎？感覺學生比較多。」',
+            sales_response: '這是對遊戲族群常見的誤解。我們用戶的中位數年齡是 26 歲，工作族群（22–35 歲）佔 MAU 的 62%。他們在電競周邊、遊戲儲值的年消費就不低，而且在零食、飲料、外送的消費習慣非常活躍——這跟您的品牌直接相關。學生族群確實存在，但不是主力，我可以給您詳細的用戶調研數據。',
+            sales_tip:      '接球關鍵：用具體數字打破刻板印象。準備好用戶年齡分布、消費力調研數據。強調「玩遊戲」是一種娛樂選擇，不代表收入水準低。如果有外部調研報告佐證更有力。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '7',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '2',
+            objection_tag:  '受眾重疊疑慮',
+            client_says:    '「這群人我在 Meta 或 YouTube 也打得到啊，為什麼要多花一筆？」',
+            sales_response: '理論上對。但實際上，這群人在 Meta 和 YouTube 上的廣告規避行為非常強——他們裝 AdBlock 的比例是一般用戶的兩倍，滑過廣告的速度也更快。在我們平台，他們是主動來找內容的，防禦心最低的時刻。同樣的預算，在大平台買到的是「曝光數」，在我們這裡買到的是「真正被看見的瞬間」。',
+            sales_tip:      '接球關鍵：競爭點從「能不能打到」轉移到「打到的品質」。用廣告可見性（Viewability）、互動率、停留時間等質化數據佐證，而非純粹比較 CPM。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '8',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '2',
+            objection_tag:  '主觀受眾判斷',
+            client_says:    '「玩遊戲的人就是不喜歡我們這種品牌，強迫打廣告只是浪費錢。」',
+            sales_response: '這個假設值得驗證一下。您的品牌在這個族群的認知度如何，有沒有做過測試？我認識幾個快消品牌，一開始也有同樣的顧慮，但真的做了任務型合作之後，兌換率比預期高出很多——因為這群人其實有需求，只是沒有被觸及的機會。我們可以用一個很低成本的測試包驗證，資料說話比假設更準。',
+            sales_tip:      '接球關鍵：把「主觀判斷」轉化為「值得驗證的假設」。不直接反駁客戶，而是提出「用數據驗證」的框架。低成本測試包是打開大門最好的工具。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+
+        /* == 階段 3：數據說明 == */
+        {
+            dialogue_id:    '9',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '3',
+            objection_tag:  '規模太小',
+            client_says:    '「25萬會員、450萬MAU，跟大平台比感覺數字很小。」',
+            sales_response: '規模確實不是我們的強項——我不會說我們跟 Google 或 Facebook 一樣大。但請您思考：您花在大平台的廣告，有多少比例真正觸及了您還沒有開發的受眾？如果 450 萬 MAU 裡有 60% 是您從未有效觸及的族群，那這 270 萬才是真正有增量價值的曝光。數字的品質比數字的大小更重要。',
+            sales_tip:      '接球關鍵：從「規模」轉移到「增量」。永遠強調「有多少是您原本觸及不到的新受眾」，而不是跟大平台比總量。我們的核心價值主張是「受眾多樣化」，不是「規模最大」。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '10',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '3',
+            objection_tag:  '精準度質疑',
+            client_says:    '「你們可以像 Meta 一樣做再行銷、做興趣標籤嗎？」',
+            sales_response: '坦白說，我們的受眾標籤精細度確實不如 Meta，我不會誇大這一點。但再行銷鎖定的是「已知受眾」，而我們鎖定的是「情境」。玩家在完成一局遊戲後的心理狀態，是任何標籤都描述不出來的。這個情境本身就是一種篩選機制。我們賣的不是精準標籤，我們賣的是情境。',
+            sales_tip:      '接球關鍵：坦承限制，再用「情境行銷」概念重建優勢。不要假裝我們有我們沒有的功能，誠實是建立信任的基礎。把劣勢（不精準）轉化成優勢（情境）是這個階段最重要的技巧。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '11',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '3',
+            objection_tag:  '數據可信度',
+            client_says:    '「這些用戶數據有第三方驗證嗎？你們自己說的數字我不太信。」',
+            sales_response: '合理的懷疑。我們有定期的內部數據稽核，部分廣告活動可以搭配第三方追蹤工具（如 DoubleClick、Nielsen）做獨立驗證。正式提案裡，我可以附上可驗證的數據方法說明。另外，對您來說最直接的方式是：用一個小型測試包，您自己的 UTM 追蹤來跑——數字真不真，您的 GA 會說話。',
+            sales_tip:      '接球關鍵：面對數據質疑，最好的回應是提供「可自行驗證的方式」。讓客戶自己的工具來驗證，比任何第三方背書都更有說服力。準備好 UTM 追蹤設定的技術支援能力。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '12',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '3',
+            objection_tag:  '競品比較',
+            client_says:    '「巴哈姆特的數據比你們大，你們和他們比有什麼差異？」',
+            sales_response: '巴哈姆特是很好的平台，我們尊重他們。差異在定位：巴哈姆特是論壇社群，用戶去那裡是討論和查資料；我們是電競媒體，用戶來這裡是消費內容和體驗情境。廣告在不同情境下的接受度不一樣。另外我們的廣編質量和品牌呈現精緻度是我們的強項——對品牌調性有要求的客戶，這點更重要。',
+            sales_tip:      '接球關鍵：不貶低競爭對手，差異化而非競爭化。把競爭話題轉回客戶需求：他們需要的是「內容品質」還是「論壇曝光」？根據需求點出我們的差異化優勢。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+
+        /* == 階段 4：成效與 ROI == */
+        {
+            dialogue_id:    '13',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '4',
+            objection_tag:  '要求保證成效',
+            client_says:    '「你能保證多少轉換率嗎？沒有承諾我們沒辦法簽約。」',
+            sales_response: '我沒辦法承諾具體轉換率，因為這取決於您的創意素材、落地頁、受眾匹配度——這是任何誠實的媒體都不會承諾的。但我可以承諾的是：曝光保量、互動數據透明，以及如果跑任務型合作，每個兌換的成本是可以被計算和追蹤的。您說的「承諾」，我們可以定義成「任務完成數量保底」，這個可以談。',
+            sales_tip:      '接球關鍵：把「轉換率保證」這個不可能的承諾，轉化成「任務完成量保底」這個可談的 KPI。誠實告訴客戶哪些可以承諾、哪些不行，建立信任感比空口承諾更重要。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '14',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '4',
+            objection_tag:  '追蹤困難',
+            client_says:    '「品牌廣告我要怎麼向主管報告成效？KPI 很難設定。」',
+            sales_response: '這個問題很實際。我們提供兩層 KPI：第一層是曝光指標（曝光數、點擊率、文章停留時間），這是基礎報告。第二層是行動指標——如果搭配任務機制，每個玩家完成任務並兌換您的產品，這個數字是實實在在的行動，可以直接當 KPI 向上報告。我可以在提案裡幫您把 KPI 框架設計好。',
+            sales_tip:      '接球關鍵：業務的工作不只是賣廣告，還要幫客戶解決「向主管交代」的問題。主動提供「KPI 框架設計」這個附加價值，讓客戶感覺有人幫他們處理麻煩事，簽約意願大幅提升。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '15',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '4',
+            objection_tag:  '短期效益壓力',
+            client_says:    '「這類品牌廣告很難在季度報告看到成效，我們長官都要看短期數字。」',
+            sales_response: '完全理解這個壓力。這就是為什麼我特別建議任務型合作，而不是純曝光型廣告。任務完成數是即時可追蹤的，每週可以出報告，而且每一個兌換背後都是真實消費過或嘗試過您產品的人。這樣的數字，不論對內部報告還是品牌決策都有實質意義，不是一個「品牌感覺好一點」的軟指標。',
+            sales_tip:      '接球關鍵：「任務型」是這種情況下最有力的解法。把「品牌廣告」重新包裝成「有追蹤機制的試用推廣」，讓短期內可以有具體數字，同時也在做品牌建立。雙贏框架。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '16',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '4',
+            objection_tag:  '過去失敗經驗',
+            client_says:    '「我們之前在遊戲相關平台投過廣告，效果不理想。」',
+            sales_response: '可以問一下是哪個平台、投的是什麼格式嗎？這個資訊對我很重要。很多時候遊戲媒體廣告成效不好，原因是素材和受眾不匹配，或者用了橫幅廣告這種這個族群最容易忽略的格式。我們做的是情境廣編——由我們的編輯跟品牌一起做內容，呈現方式更像推薦文而非廣告，這跟傳統 Banner 的效果差異很大。',
+            sales_tip:      '接球關鍵：先了解過去失敗的真正原因，再有針對性地差異化。不要急著說「我們不一樣」，先問清楚對方之前做了什麼，再診斷問題所在，最後提出解法。讓客戶感覺你是在幫他分析，而不是在推銷。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+
+        /* == 階段 5：預算異議 == */
+        {
+            dialogue_id:    '17',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '5',
+            objection_tag:  '沒有預算',
+            client_says:    '「我們這個季度沒有這個預算，真的沒辦法。」',
+            sales_response: '我理解。可以問一下，下個季度的預算規劃大概什麼時候開始討論？我不希望在不對的時機打擾您，但我想在您做規劃的時候能夠參與進來，至少提供這個族群的數據給您參考。如果時機到了，要不要現在先排個時間？',
+            sales_tip:      '接球關鍵：預算問題真正的解是「卡進規劃週期」，不是今天說服對方。明確問出下次規劃節點並排進跟進計畫，是這個情況下最實際的做法。不要空手回來。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '18',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '5',
+            objection_tag:  'CP 值質疑',
+            client_says:    '「同樣的預算放在 Google 或 Meta，觸及人數更多，CP 值更高。」',
+            sales_response: '數字上您說的沒錯——大平台的 CPM 通常比我們低。但請您思考：您在大平台觸及的，有多少比例是您「還沒觸及過」的新受眾？如果大平台已經飽和、這群人也都看過您的廣告，那花更多錢在同一個受眾身上的邊際效益是遞減的。我們的價值不是便宜，而是增量。',
+            sales_tip:      '接球關鍵：不跟大平台比 CPM，那是必輸的戰場。改比「增量受眾的價值」。讓客戶計算的不是「每千次曝光成本」，而是「每一個新受眾的開發成本」，這個框架對我們有利。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '19',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '5',
+            objection_tag:  '需要內部核准',
+            client_says:    '「這個金額我需要向上申請，不是我一個人能決定的。」',
+            sales_response: '完全理解。我可以幫您做一件事：準備一份可以直接向上呈報的簡報，包括受眾說明、預期 KPI、參考案例，讓您向主管報告時有完整的材料。您大概什麼時候會有機會跟主管討論？我想在那個時間點前把材料給您。如果需要，我也可以直接跟您的主管做一次簡報。',
+            sales_tip:      '接球關鍵：幫「決策輔助者」準備好說服工具。很多採購決策失敗是因為決策鏈中間那個人沒有足夠的材料向上說服。主動製作「向上報告材料」是突破這個卡關點最有效的方法。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '20',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '5',
+            objection_tag:  '最小方案需求',
+            client_says:    '「你們有沒有更小的入門方案？這個報價對我們來說太高了。」',
+            sales_response: '有的。我們的入門測試包設計就是為了讓品牌在低成本下驗證效果：一篇情境廣編、兩週 Banner 曝光、搭配一個小型任務兌換機制。這個組合可以拿到足夠的數據判斷是否值得擴大投入。測試包不是做大做滿，是做出一個可以拿來說話的數字。',
+            sales_tip:      '接球關鍵：永遠有入門款。當客戶說太貴，不是說再見，是拿出小包裝。入門測試包的設計邏輯是「夠小、夠快、夠可驗證」——讓客戶用最低風險嘗試，做了之後有數據、有經驗，下次擴大才是水到渠成。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+
+        /* == 階段 6：關單 == */
+        {
+            dialogue_id:    '21',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '6',
+            objection_tag:  '再考慮看看',
+            client_says:    '「讓我考慮一下，我想想再告訴你。」',
+            sales_response: '沒問題，這個決定值得好好考慮。我想確認一下，是有什麼地方我還沒有說清楚，還是有其他考量我可以幫您釐清？如果一切都清楚了，我建議我們排個具體時間——不排時間的話，這件事很容易就被日常事務淹掉。我下週三或週四方便跟您確認結果？',
+            sales_tip:      '接球關鍵：「再考慮看看」是最模糊的拒絕，需要立刻鎖定下一個接觸時間。先問清楚是否有疑慮，再主動提出具體的跟進時間點，不讓這個機會在「考慮中」消失。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '22',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '6',
+            objection_tag:  '需要比較其他媒體',
+            client_says:    '「我還要問幾家媒體的方案，比較完再決定。」',
+            sales_response: '合理，做比較是應該的。我可以先問一下，您在比較的時候最重視的是哪幾個面向——觸及規模、受眾特性，還是價格？如果您把評估框架告訴我，我可以針對這些面向準備一份對比說明，讓您在比較時更有系統。另外，您預計多久會做決定？',
+            sales_tip:      '接球關鍵：了解評估框架，搶先定義比較標準。讓客戶在您設計的框架下做比較，對我們更有利。同時問出決策時間線，讓後續跟進有明確節點。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '23',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '6',
+            objection_tag:  '時機問題',
+            client_says:    '「現在時機不對，等到下半年預算重新規劃再說吧。」',
+            sales_response: '好的，我尊重您的時程安排。那我想在您開始規劃下半年媒體之前主動聯繫您，確保這個族群的方向能夠被納入考慮。大概幾月份您會開始做下半年的規劃？我在那個時間點一到兩週前聯繫您，給您最新的方案和數據參考。',
+            sales_tip:      '接球關鍵：時機問題唯一的解是「精準卡入規劃週期」。不要說「好，到時候再聯繫」然後沒有行動——要問出具體時間、在 CRM 設定提醒，並且在規劃期開始前主動出現。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+        {
+            dialogue_id:    '24',
+            industry_id:    'lifestyle_fmcg',
+            stage_id:       '6',
+            objection_tag:  '要求詳細提案',
+            client_says:    '「先給我看詳細提案，我評估完再說。」',
+            sales_response: '沒問題，我這週就把提案整理給您。在整理之前，我想再確認幾件事讓提案更貼合您的需求：您的預算範圍大概落在哪個區間？這次合作最想驗證的核心問題是什麼？以及，希望提案聚焦在哪個產品線？有這幾個方向，我可以做出一份有針對性的提案，而不是通用版的媒體報價單。',
+            sales_tip:      '接球關鍵：收到「先給我看提案」時，不要直接說好就走——先問三個問題。這三個問題讓提案更精準，也在過濾客戶的誠意。如果客戶連這三個基本問題都不願意回答，表示這個機會的溫度還不夠，提案的優先順序可以調低。',
+            source:         '2026/06 初始版本',
+            is_active:      'TRUE',
+            last_updated:   '2026-06-01',
+        },
+    ],
+};
+
+
+/* ============================================================
+   全域應用程式狀態
+   ============================================================ */
+const state = {
+    industries:        [],   /* 所有產業資料 */
+    stages:            [],   /* 所有階段資料 */
+    dialogues:         [],   /* 所有話術資料 */
+    currentIndustryId: null, /* 目前選中的產業 ID */
+    currentStageId:    null, /* 目前選中的階段 ID */
+};
+
+
+/* ============================================================
+   快取工具：用 localStorage 儲存 API 結果，避免頻繁呼叫
+   ============================================================ */
+function getCachedSheet(sheetName) {
+    try {
+        const raw = localStorage.getItem(`4g_cache_${sheetName}`);
+        if (!raw) return null;
+        const { timestamp, data } = JSON.parse(raw);
+        const ageMin = (Date.now() - timestamp) / 60000;
+        if (ageMin > CONFIG.CACHE_MINUTES) return null; /* 快取過期 */
+        return data;
+    } catch { return null; }
+}
+
+function setCachedSheet(sheetName, data) {
+    try {
+        localStorage.setItem(`4g_cache_${sheetName}`, JSON.stringify({
+            timestamp: Date.now(),
+            data,
+        }));
+    } catch { /* 快取失敗不影響功能 */ }
+}
+
+/* 判斷使用者是否已在 CONFIG 填入真實的 Google Sheets 設定 */
+function isSheetsConfigured() {
+    return CONFIG.SHEET_ID !== 'YOUR_GOOGLE_SHEET_ID_HERE'
+        && CONFIG.API_KEY !== 'YOUR_GOOGLE_API_KEY_HERE'
+        && CONFIG.SHEET_ID.trim().length > 10;
+}
+
+
+/* ============================================================
+   Google Sheets API 讀取
+   將 Sheets 的二維陣列（第一列為 header）轉換成物件陣列
+   ============================================================ */
+async function fetchSheetData(sheetName) {
+    /* 先查快取 */
+    const cached = getCachedSheet(sheetName);
+    if (cached) return cached;
+
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(sheetName)}?key=${CONFIG.API_KEY}`;
+    const res  = await fetch(url);
+
+    if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`讀取 ${sheetName} 失敗（HTTP ${res.status}）：${errBody.slice(0, 200)}`);
+    }
+
+    const json = await res.json();
+    if (!json.values || json.values.length < 2) return [];
+
+    /* 第一列是欄位名稱，其他列轉成物件 */
+    const [headers, ...rows] = json.values;
+    const data = rows.map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
+        return obj;
+    });
+
+    setCachedSheet(sheetName, data);
+    return data;
+}
+
+
+/* ============================================================
+   啟動：載入所有資料，決定使用 Google Sheets 或預設資料
+   ============================================================ */
+async function boot() {
+    showLoadingState();
+
+    try {
+        if (isSheetsConfigured()) {
+            /* 三個 Sheet 同時呼叫，節省等待時間 */
+            const [industries, stages, dialogues] = await Promise.all([
+                fetchSheetData(CONFIG.SHEETS.industries),
+                fetchSheetData(CONFIG.SHEETS.stages),
+                fetchSheetData(CONFIG.SHEETS.dialogues),
+            ]);
+            state.industries = industries;
+            state.stages     = stages;
+            state.dialogues  = dialogues;
+        } else {
+            /* 使用內建預設資料 */
+            state.industries = FALLBACK_DATA.industries;
+            state.stages     = FALLBACK_DATA.stages;
+            state.dialogues  = FALLBACK_DATA.dialogues;
+        }
+
+        renderApp();
+
+    } catch (err) {
+        showErrorState(`內容載入失敗，請重新整理頁面。\n\n錯誤詳情：${err.message}`);
+    }
+}
+
+
+/* ============================================================
+   渲染整個 App 框架（首次載入或切換產業時呼叫）
+   ============================================================ */
+function renderApp() {
+    /* 篩選啟用中的產業並排序 */
+    const activeIndustries = state.industries
+        .filter(i => isActive(i.is_active))
+        .sort((a, b) => +a.sort_order - +b.sort_order);
+
+    if (activeIndustries.length === 0) {
+        showErrorState('目前沒有可用的產業內容，請在 Google Sheets 的 industries Sheet 中確認 is_active 欄位設為 TRUE。');
+        return;
+    }
+
+    /* 填充產業下拉選單 */
+    const sel = document.getElementById('industrySelect');
+    sel.innerHTML = '';
+    activeIndustries.forEach(ind => {
+        const opt = new Option(ind.industry_name_zh, ind.industry_id);
+        sel.appendChild(opt);
+    });
+
+    /* 渲染主介面結構 */
+    renderMainLayout();
+
+    /* 預設選擇第一個產業 */
+    selectIndustry(activeIndustries[0].industry_id);
+}
+
+
+/* ============================================================
+   渲染主介面的靜態 HTML 骨架
+   ============================================================ */
+function renderMainLayout() {
+    const root = document.getElementById('appContent');
+    root.innerHTML = `
+        ${!isSheetsConfigured() ? `
+        <div class="config-notice">
+            <div class="config-notice-icon">&#9888;</div>
+            <div>
+                <strong>目前使用內建示範資料。</strong>
+                請參閱 <code>README.md</code> 設定 Google Sheets，設定完成後話術內容將自動從雲端讀取，業務主管可直接在 Sheets 新增與修改話術。
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- 業務開場白卡片 -->
+        <div class="opener-card">
+            <div class="opener-card-header">
+                <span class="stage-badge" id="stageBadge">階段 1</span>
+                <span id="openerTitle" style="font-size:16px;font-weight:700;color:white;"></span>
+            </div>
+            <div class="opener-label">&#x25B6;&nbsp; 業務開場白</div>
+            <div class="opener-text" id="openerText"></div>
+        </div>
+
+        <!-- 對話階段 Tab 列 -->
+        <div class="stage-tabs-wrapper">
+            <div class="stage-tabs-label">選擇對話階段</div>
+            <div class="stage-tabs" id="stageTabs"></div>
+        </div>
+
+        <!-- 客戶異議按鈕區 -->
+        <div class="objection-section">
+            <div class="objection-section-title">客戶聽完，出現以下反應——</div>
+            <div class="objection-section-subtitle">點擊任一異議，查看業務接球話術與備忘</div>
+            <div class="objection-grid" id="objectionGrid"></div>
+        </div>
+
+        <!-- 話術展示區（點擊異議後顯示） -->
+        <div class="response-area" id="responseArea">
+
+            <!-- 客戶說的話（橘色卡片） -->
+            <div class="dialogue-bubble client-bubble">
+                <div class="bubble-header">
+                    <div class="bubble-icon client-icon">客</div>
+                    <div class="bubble-label">客戶說</div>
+                </div>
+                <div class="bubble-content" id="clientSaysText"></div>
+            </div>
+
+            <!-- 業務接球話術（藍色卡片） -->
+            <div class="dialogue-bubble sales-bubble">
+                <div class="bubble-header">
+                    <div class="bubble-icon sales-icon">業</div>
+                    <div class="bubble-label">業務接球話術</div>
+                </div>
+                <div class="bubble-content" id="salesResponseText"></div>
+            </div>
+
+            <!-- 業務備忘（灰色區塊） -->
+            <div class="memo-block">
+                <div class="memo-header">
+                    <div class="memo-dot"></div>
+                    <div class="memo-label">接球關鍵備忘</div>
+                </div>
+                <div class="memo-content" id="salesTipText"></div>
+                <div class="source-tag" id="sourceTag"></div>
+            </div>
+        </div>
+
+        <!-- 底部導航 -->
+        <div class="nav-footer">
+            <button class="nav-btn" id="prevBtn" onclick="goStage(-1)">&#8592; 上一階段</button>
+            <div class="progress-indicator" id="progressText"></div>
+            <button class="nav-btn primary" id="nextBtn" onclick="goStage(1)">下一階段 &#8594;</button>
+        </div>
+    `;
+}
+
+
+/* ============================================================
+   切換產業（下拉選單 onchange 觸發）
+   ============================================================ */
+function onIndustryChange(industryId) {
+    selectIndustry(industryId);
+}
+
+function selectIndustry(industryId) {
+    state.currentIndustryId = industryId;
+    state.currentStageId    = null;
+
+    /* 取得此產業的啟用階段，依 sort_order 排序 */
+    const stages = getActiveStages(industryId);
+
+    if (stages.length === 0) {
+        document.getElementById('appContent').innerHTML = `
+            <div class="error-box">
+                <h3>此產業尚無對話階段</h3>
+                <p>請在 Google Sheets 的 stages Sheet 中為「${industryId}」新增對話階段。</p>
+            </div>`;
+        return;
+    }
+
+    /* 渲染 Stage Tab 列 */
+    renderStageTabs(stages);
+
+    /* 預設進入第一個階段 */
+    selectStage(stages[0].stage_id);
+}
+
+
+/* ============================================================
+   渲染 Stage Tab 按鈕列
+   ============================================================ */
+function renderStageTabs(stages) {
+    const container = document.getElementById('stageTabs');
+    if (!container) return;
+    container.innerHTML = '';
+    stages.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'stage-tab';
+        btn.id        = `tab_${s.stage_id}`;
+        btn.textContent = s.stage_label;
+        btn.onclick   = () => selectStage(s.stage_id);
+        container.appendChild(btn);
+    });
+}
+
+
+/* ============================================================
+   切換對話階段
+   ============================================================ */
+function selectStage(stageId) {
+    state.currentStageId = stageId;
+
+    const stages      = getActiveStages(state.currentIndustryId);
+    const stage       = stages.find(s => s.stage_id === stageId);
+    const stageIndex  = stages.indexOf(stage);
+
+    if (!stage) return;
+
+    /* 更新 Tab 樣式 */
+    stages.forEach(s => {
+        const el = document.getElementById(`tab_${s.stage_id}`);
+        if (el) el.className = s.stage_id === stageId ? 'stage-tab active' : 'stage-tab';
+    });
+
+    /* 更新開場白卡片 */
+    document.getElementById('stageBadge').textContent  = `階段 ${stageIndex + 1}`;
+    document.getElementById('openerTitle').textContent = stage.stage_label;
+    document.getElementById('openerText').textContent  = stage.opener_text;
+
+    /* 更新進度與導航按鈕 */
+    document.getElementById('progressText').textContent   = `${stageIndex + 1} / ${stages.length}`;
+    document.getElementById('prevBtn').disabled           = stageIndex === 0;
+    document.getElementById('nextBtn').disabled           = stageIndex === stages.length - 1;
+    document.getElementById('nextBtn').textContent        = stageIndex === stages.length - 1 ? '已是最後階段' : '下一階段 →';
+
+    /* 渲染異議按鈕 */
+    renderObjections(stageId);
+
+    /* 隱藏上一次展開的話術 */
+    hideResponseArea();
+}
+
+
+/* ============================================================
+   渲染客戶異議按鈕網格
+   ============================================================ */
+function renderObjections(stageId) {
+    const grid = document.getElementById('objectionGrid');
+    if (!grid) return;
+
+    const dialogues = state.dialogues.filter(d =>
+        d.industry_id === state.currentIndustryId &&
+        d.stage_id    === stageId &&
+        isActive(d.is_active)
+    );
+
+    if (dialogues.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text-memo);font-size:13px;">此階段尚無話術內容，請在 Google Sheets 的 dialogues Sheet 中新增。</div>';
+        return;
+    }
+
+    grid.innerHTML = '';
+    dialogues.forEach(d => {
+        const btn = document.createElement('button');
+        btn.className = 'objection-btn';
+        btn.id        = `obj_${d.dialogue_id}`;
+        btn.innerHTML = `
+            <div class="objection-tag">${escHtml(d.objection_tag)}</div>
+            <div class="objection-preview">${escHtml(d.client_says)}</div>
+        `;
+        btn.onclick = () => showDialogue(d.dialogue_id);
+        grid.appendChild(btn);
+    });
+}
+
+
+/* ============================================================
+   點擊異議按鈕：展示話術
+   ============================================================ */
+function showDialogue(dialogueId) {
+    const d = state.dialogues.find(x => x.dialogue_id === dialogueId);
+    if (!d) return;
+
+    /* 更新按鈕選中狀態 */
+    document.querySelectorAll('.objection-btn').forEach(btn => {
+        btn.className = btn.id === `obj_${dialogueId}` ? 'objection-btn selected' : 'objection-btn';
+    });
+
+    /* 填入話術內容 */
+    document.getElementById('clientSaysText').textContent   = d.client_says;
+    document.getElementById('salesResponseText').textContent = d.sales_response;
+    document.getElementById('salesTipText').textContent     = d.sales_tip;
+
+    /* 來源標籤 */
+    const src = document.getElementById('sourceTag');
+    if (d.source) {
+        src.textContent = `來源：${d.source}${d.last_updated ? '　最後更新：' + d.last_updated : ''}`;
+        src.style.display = 'block';
+    } else {
+        src.style.display = 'none';
+    }
+
+    /* 顯示話術區（帶 fadeIn 動畫）*/
+    const area = document.getElementById('responseArea');
+    area.className = 'response-area'; /* 先移掉 visible 觸發動畫 reset */
+    void area.offsetWidth;            /* 強制 reflow */
+    area.className = 'response-area visible';
+
+    /* 平滑捲動到話術區 */
+    area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+
+/* ============================================================
+   前後階段導航（底部按鈕觸發）
+   ============================================================ */
+function goStage(delta) {
+    const stages = getActiveStages(state.currentIndustryId);
+    const idx    = stages.findIndex(s => s.stage_id === state.currentStageId);
+    const next   = idx + delta;
+    if (next >= 0 && next < stages.length) {
+        selectStage(stages[next].stage_id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+
+/* ============================================================
+   工具函式
+   ============================================================ */
+
+/* 判斷 is_active 欄位（可能是字串 'TRUE' 或布林值 true） */
+function isActive(val) {
+    return val === 'TRUE' || val === true;
+}
+
+/* 取得指定產業的啟用階段（已排序） */
+function getActiveStages(industryId) {
+    return state.stages
+        .filter(s => s.industry_id === industryId && isActive(s.is_active))
+        .sort((a, b) => +a.sort_order - +b.sort_order);
+}
+
+/* 隱藏話術展示區 */
+function hideResponseArea() {
+    const area = document.getElementById('responseArea');
+    if (area) area.className = 'response-area';
+}
+
+/* 防 XSS：對插入 HTML 的文字做 escape */
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+
+/* ============================================================
+   載入狀態 / 錯誤狀態 UI
+   ============================================================ */
+function showLoadingState() {
+    document.getElementById('appContent').innerHTML = `
+        <div class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">正在載入話術內容...</div>
+        </div>`;
+}
+
+function showErrorState(message) {
+    document.getElementById('appContent').innerHTML = `
+        <div class="error-box">
+            <h3>&#x26A0; 內容載入失敗</h3>
+            <p>${escHtml(message).replace(/\n/g, '<br>')}</p>
+            <button onclick="boot()">重新載入</button>
+        </div>`;
+}
+
+
+/* ============================================================
+   啟動！
+   ============================================================ */
+boot();
+</script>
+</body>
+</html>
