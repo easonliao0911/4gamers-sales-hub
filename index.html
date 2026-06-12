@@ -1257,17 +1257,33 @@ function selectIndustry(industryId) {
     state.currentIndustryId = industryId;
     state.currentStageId    = null;
 
+    /* 若 DOM 結構被上一次錯誤狀態破壞，先重建 */
+    if (!document.getElementById('stageTabs')) {
+        renderMainLayout();
+    }
+
     /* 取得此產業的啟用階段，依 sort_order 排序 */
     const stages = getActiveStages(industryId);
 
     if (stages.length === 0) {
-        document.getElementById('appContent').innerHTML = `
-            <div class="error-box">
+        document.getElementById('stageTabs').innerHTML = '';
+        document.getElementById('objectionGrid').innerHTML = `
+            <div class="error-box" style="grid-column:1/-1">
                 <h3>此產業尚無對話階段</h3>
                 <p>請在 Google Sheets 的 stages Sheet 中為「${industryId}」新增對話階段。</p>
             </div>`;
+        document.getElementById('responseArea').style.display  = 'none';
+        document.getElementById('openerText').textContent      = '';
+        document.getElementById('openerTitle').textContent     = '';
+        document.getElementById('stageBadge').textContent      = '';
+        document.getElementById('progressText').textContent    = '';
+        document.getElementById('prevBtn').disabled            = true;
+        document.getElementById('nextBtn').disabled            = true;
         return;
     }
+
+    /* 恢復話術展示區（若之前被隱藏） */
+    document.getElementById('responseArea').style.display = '';
 
     /* 渲染 Stage Tab 列 */
     renderStageTabs(stages);
